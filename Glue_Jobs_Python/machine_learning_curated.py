@@ -19,6 +19,8 @@ spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
+BUCKET = "stedi-human-balance-ye"
+
 step_trainer_trusted = glueContext.create_dynamic_frame.from_catalog(
     database="stedi",
     table_name="step_trainer_trusted",
@@ -42,6 +44,7 @@ FROM a
 INNER JOIN s
 ON a.timestamp = s.sensorreadingtime
 """
+
 machine_learning_curated = sparkSqlQuery(
     glueContext,
     query=query,
@@ -50,7 +53,7 @@ machine_learning_curated = sparkSqlQuery(
 )
 
 sink = glueContext.getSink(
-    path="s3://stedi-human-balance-ye/curated/machine_learning_curated/",
+    path=f"s3://{BUCKET}/curated/machine_learning_curated/",
     connection_type="s3",
     updateBehavior="UPDATE_IN_DATABASE",
     partitionKeys=[],

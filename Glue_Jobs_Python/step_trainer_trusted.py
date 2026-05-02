@@ -19,12 +19,20 @@ spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
-step_trainer_landing = glueContext.create_dynamic_frame.from_catalog(
-    database="stedi",
-    table_name="step_trainer_landing",
+BUCKET = "stedi-human-balance-ye"
+
+# ✅ Landing source from S3 (JSON)
+step_trainer_landing = glueContext.create_dynamic_frame.from_options(
+    connection_type="s3",
+    format="json",
+    connection_options={
+        "paths": [f"s3://{BUCKET}/landing/step_trainer_landing/"],
+        "recurse": True
+    },
     transformation_ctx="step_trainer_landing"
 )
 
+# Curated customer set (Catalog) — if you don’t have customer_curated, swap to customer_trusted
 customer_curated = glueContext.create_dynamic_frame.from_catalog(
     database="stedi",
     table_name="customer_curated",
@@ -37,6 +45,7 @@ FROM s
 INNER JOIN c
 ON s.serialnumber = c.serialnumber
 """
+
 step_trainer_trusted = sparkSqlQuery(
     glueContext,
     query=query,
@@ -45,7 +54,7 @@ step_trainer_trusted = sparkSqlQuery(
 )
 
 sink = glueContext.getSink(
-    path="s3://stedi-human-balance-ye/trusted/step_trainer_trusted/",
+    path=f"s3://{BUCKET}/trusted/step_trainer_trusted/",
     connection_type="s3",
     updateBehavior="UPDATE_IN_DATABASE",
     partitionKeys=[],

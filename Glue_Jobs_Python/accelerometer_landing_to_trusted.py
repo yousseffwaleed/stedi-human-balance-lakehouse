@@ -19,12 +19,20 @@ spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
-accelerometer_landing = glueContext.create_dynamic_frame.from_catalog(
-    database="stedi",
-    table_name="accelerometer_landing",
+BUCKET = "stedi-human-balance-ye"
+
+# ✅ Landing source from S3 (JSON)
+accelerometer_landing = glueContext.create_dynamic_frame.from_options(
+    connection_type="s3",
+    format="json",
+    connection_options={
+        "paths": [f"s3://{BUCKET}/landing/accelerometer_landing/"],
+        "recurse": True
+    },
     transformation_ctx="accelerometer_landing"
 )
 
+# Trusted source can be Catalog (not landing)
 customer_trusted = glueContext.create_dynamic_frame.from_catalog(
     database="stedi",
     table_name="customer_trusted",
@@ -37,6 +45,7 @@ FROM a
 INNER JOIN c
 ON a.user = c.email
 """
+
 accelerometer_trusted = sparkSqlQuery(
     glueContext,
     query=query,
@@ -45,7 +54,7 @@ accelerometer_trusted = sparkSqlQuery(
 )
 
 sink = glueContext.getSink(
-    path="s3://stedi-human-balance-ye/trusted/accelerometer_trusted/",
+    path=f"s3://{BUCKET}/trusted/accelerometer_trusted/",
     connection_type="s3",
     updateBehavior="UPDATE_IN_DATABASE",
     partitionKeys=[],

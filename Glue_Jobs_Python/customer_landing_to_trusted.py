@@ -19,19 +19,25 @@ spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
-# Read from Data Catalog landing table
-customer_landing = glueContext.create_dynamic_frame.from_catalog(
-    database="stedi",
-    table_name="customer_landing",
+BUCKET = "stedi-human-balance-ye"
+
+# ✅ Landing source from S3 (JSON)
+customer_landing = glueContext.create_dynamic_frame.from_options(
+    connection_type="s3",
+    format="json",
+    connection_options={
+        "paths": [f"s3://{BUCKET}/landing/customer_landing/"],
+        "recurse": True
+    },
     transformation_ctx="customer_landing"
 )
 
-# Filter only consented customers
 query = """
 SELECT *
 FROM customer_landing
 WHERE sharewithresearchasofdate IS NOT NULL
 """
+
 customer_trusted = sparkSqlQuery(
     glueContext,
     query=query,
@@ -39,9 +45,8 @@ customer_trusted = sparkSqlQuery(
     transformation_ctx="customer_trusted"
 )
 
-# Write to S3 + register catalog table
 sink = glueContext.getSink(
-    path="s3://stedi-human-balance-ye/trusted/customer_trusted/",
+    path=f"s3://{BUCKET}/trusted/customer_trusted/",
     connection_type="s3",
     updateBehavior="UPDATE_IN_DATABASE",
     partitionKeys=[],
