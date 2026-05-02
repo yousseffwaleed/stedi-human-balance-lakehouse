@@ -1,4 +1,5 @@
 import sys
+import sys
 from awsglue.utils import getResolvedOptions
 from pyspark.context import SparkContext
 from awsglue.context import GlueContext
@@ -19,6 +20,8 @@ spark = glueContext.spark_session
 job = Job(glueContext)
 job.init(args["JOB_NAME"], args)
 
+BUCKET = "stedi-human-balance-ye"
+
 customer_trusted = glueContext.create_dynamic_frame.from_catalog(
     database="stedi",
     table_name="customer_trusted",
@@ -37,6 +40,7 @@ FROM c
 INNER JOIN a
 ON c.email = a.user
 """
+
 customer_curated = sparkSqlQuery(
     glueContext,
     query=query,
@@ -45,7 +49,7 @@ customer_curated = sparkSqlQuery(
 )
 
 sink = glueContext.getSink(
-    path="s3://stedi-human-balance-ye/curated/customer_curated/",
+    path=f"s3://{BUCKET}/curated/customer_curated/",
     connection_type="s3",
     updateBehavior="UPDATE_IN_DATABASE",
     partitionKeys=[],
